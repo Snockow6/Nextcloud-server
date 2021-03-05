@@ -53,7 +53,7 @@
     - name: install remi rpm
       dnf:
         name: https://rpms.remirepo.net/enterprise/remi-release-8.rpm
-        disable_gpg_check: no
+        disable_gpg_check: yes
         state: present
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
       
@@ -65,6 +65,7 @@
     - name: install module php:remi-7.4
       command: dnf module install php:remi-7.4 -y
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
+      changed_when: false
       
     - name: install php 7.4
       package:
