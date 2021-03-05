@@ -4,14 +4,14 @@
   become: true
   pre_tasks:
 
-    - name: install all packages
-      dnf:
+    - name: install all updates
+      package:
         name: "*"
         state: "latest"
   tasks:
-      
+    
     - name: install required packages
-      dnf:
+      package:
         name:
           - epel-release
           - yum-utils
@@ -25,3 +25,28 @@
           - mariadb-server
           - httpd #apache
         state: "latest"
+
+    - name: copy nextcloud.config
+      copy:
+        src: nextcloud.conf
+        dest: /etc/httpd/conf.d/nextcloud.conf
+    
+    - name: Enable and start httpd systemd service
+      ansible.builtin.systemd:
+        state: started
+        name: httpd
+        enabled: yes
+    
+    - name: install remi rpm
+      command: dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm -y
+      when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
+      changed_when: false
+      
+    - name: enable module stream for remi
+      command: dnf module reset php
+      when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
+      changed_when: false
+      
+    - name: install module php:remi-7.4
+      command: dnf module install php:remi-7.4 -y
+      when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
