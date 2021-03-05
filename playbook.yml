@@ -135,3 +135,93 @@
         name: redis
         enabled: yes
         
+    # Download and copy Nextcloud
+    - name: download nextcloud
+      get_url:
+        url: https://download.nextcloud.com/server/releases/nextcloud-18.0.0.zip
+        dest: /tmp
+
+    - name: unzip nextcloud
+      unarchive:
+        src: /tmp/nextcloud-18.0.0.zip
+        dest: /tmp
+        remote_src: yes
+      
+    - name: copy nextcloud to www
+      copy:
+        src: /tmp/nextcloud
+        dest: /var/www/html
+        owner: apache
+        group: apache
+        remote_src: yes
+
+    - name: create data in nextcloud
+      file:
+        path: /var/www/html/nextcloud/data
+        owner: apache
+        group: apache
+        state: directory
+        
+    - name: enable and start httpd
+      ansible.builtin.systemd:
+        state: restarted
+        name: httpd
+        enabled: yes
+      
+    # Configure Firewalld
+    - name: permit traffic in default zone for https service
+      ansible.posix.firewalld:
+        zone: public
+        service: http
+        permanent: yes
+        state: enabled
+        
+    # Set Selinux configuration
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/data(/.*)?'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/data(/.*)?'
+        setype: httpd_sys_rw_content_t
+        state: present
+        
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/config(/.*)?'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/config(/.*)?'
+        setype: httpd_sys_rw_content_t
+        state: present
+    
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/apps(/.*)?'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/apps(/.*)?'
+        setype: httpd_sys_rw_content_t
+        state: present
+    
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/.htaccess'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/.htaccess'
+        setype: httpd_sys_rw_content_t
+        state: present
+    
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/.user.ini'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/.user.ini'
+        setype: httpd_sys_rw_content_t
+        state: present
+    
+    - name: Allow apache to modify files in '/var/www/html/nextcloud/3rdparty/aws/aws-sdk-php/src/data/logs(/.*)?'
+      community.general.sefcontext:
+        target: '/var/www/html/nextcloud/3rdparty/aws/aws-sdk-php/src/data/logs(/.*)?'
+        setype: httpd_sys_rw_content_t
+        state: present
+    
+    - name: Apply new SELinux file context to filesystem
+      ansible.builtin.command: restorecon -R "/var/www/html/nextcloud/"
+      
+    - name: Set httpd_can_network_connect flag on and keep it persistent across reboots
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: yes
+        persistent: yes
+
+
+    
+    
