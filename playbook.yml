@@ -1,0 +1,27 @@
+---
+- name: install and configure nextcloud
+  hosts: SERVERS
+  become: true
+  pre_tasks:
+
+    - name: install all packages
+      dnf:
+        name: "*"
+        state: "latest"
+  tasks:
+      
+    - name: install required packages
+      dnf:
+        name:
+          - epel-release
+          - yum-utils
+          - unzip
+          - curl
+          - wget
+          - bash-completion
+          - policycoreutils-python-utils
+          - mlocate
+          - bzip2
+          - mariadb-server
+          - httpd #apache
+        state: "latest"
