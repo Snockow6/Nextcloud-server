@@ -51,9 +51,11 @@
     
     # Installing PHP onto Centos 8
     - name: install remi rpm
-      command: dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm -y
+      dnf:
+        name: https://rpms.remirepo.net/enterprise/remi-release-8.rpm
+        disable_gpg_check: no
+        state: present
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
-      changed_when: false
       
     - name: enable module stream for remi
       command: dnf module reset php -y
