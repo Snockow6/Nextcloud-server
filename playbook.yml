@@ -2,6 +2,18 @@
 - name: install and configure nextcloud
   hosts: SERVERS
   become: true
+  
+  vars:
+    mysql_root_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          65646534353964363938333064306237336465376265353338653339363566303535303139646132
+          6266336363383261303137336363643462373762313164310a666135383838653139356338626634
+          39643233396262396565393664633465353836613666663264653130393364323536626437663638
+          3235303538636264340a383438366535306538346563373538343662316563326131376536376338
+          3433
+
+    mysql_nextcloud_password: NewPassword
+    
   pre_tasks:
 
     - name: install all updates
@@ -37,16 +49,89 @@
         name: httpd
         enabled: yes
     
+    # Installing PHP onto Centos 8
     - name: install remi rpm
       command: dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm -y
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
       changed_when: false
       
     - name: enable module stream for remi
-      command: dnf module reset php
+      command: dnf module reset php -y
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
       changed_when: false
       
     - name: install module php:remi-7.4
       command: dnf module install php:remi-7.4 -y
       when: ansible_distribution  == 'CentOS' and   ansible_distribution_major_version  == '8'
+      
+    - name: install php 7.4
+      package:
+        name:
+          - php 
+          - php-gd
+          - php-mbstring
+          - php-intl
+          - php-pecl-apcu
+          - php-mysqlnd
+          - php-opcache
+          - php-json
+          - php-zip
+          - php-redis
+          - php-imagick
+        state: latest
+    
+    # Installing and configuring mariadb on Centos 8
+    # https://www.theurbanpenguin.com/installing-mariadb-using-ansible/
+    - name: install mariadb
+      package:
+        name: 
+          - mariadb-server
+          - python3-PyMySQL
+        state: latest
+      
+    - name: start mariadb
+      service:
+        name: mariadb
+        enabled: true
+        state: started
+    
+    - name: set mysql root password
+      mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        user: root
+        check_implicit_admin: yes
+        password: "{{ mysql_root_password }}"
+        host: localhost
+        priv: "*.*:ALL,GRANT"
+    # https://docs.ansible.com/ansible/2.8/modules/mysql_db_module.html
+    
+    - name: Create a new database with name 'nextcloud'
+      mysql_db:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        name: nextcloud
+        state: present
+    
+    - name: create nextcloud user
+      mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        priv: 'nextcloud.*:ALL,GRANT'
+        user: nextcloud
+        password: "{{ mysql_nextcloud_password }}"
+        host: localhost
+        
+    # Install Redis
+    
+    - name: install redis
+      package:
+        name: redis
+        state: present
+    
+    - name: enable and start redis
+      ansible.builtin.systemd:
+        state: started
+        name: redis
+        enabled: yes
+        
